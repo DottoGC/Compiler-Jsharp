@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    
+<head>
+    <title>Compi Studio</title>
+    <!-- Hojas de estilos para la pagina -->
+    <link rel="stylesheet" type="text/css" href="http://127.0.0.1:3000/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="http://127.0.0.1:3000/style.css">
+
+</head>
+
+    
+<body>
+
+    <!-- Menú Principal -->
+    <div id="menusup" class="topnav">
+        <div align="center"><b><h7> &lt; COMPI STUDIO - 201020975 &gt; </h7></b></div>
+        <a href="#" id="aCreate">Nueva Pestaña</a>
+        <a href="#" id="aImport">Abrir</a><input type="file" id="importFile" onchange="showFile()"><!--showFile() funcion q se ejecutara-->     
+        <a href="#" id="aSave">Guardar</a>     
+        <a href="#" id="aVistaEditor">Editor HLC</a>
+        <a href="#" id="aCompile">Compilar</a>
+        <a href="#" id="aVista3D">Editor 3AC</a>
+        <a href="#" id="aOpitmizarC3D">Optimizar</a>
+        <a href="#" id="aReportAST">AST</a>
+    </div>
+    
+    
+    <!-- Div Pestañas editor código de alto nivel -->
+    <div id="tabs" style="width: 1330px;">
+        <ul>
+            
+        </ul>
+    </div>
+
+ 
+    <!-- Div Pestañas de Resultados(Consola,TablaSimbolos,Errores) -->
+    <div id="tabs2" style="width: 1330px;">
+        <ul>
+            
+            
+        </ul>
+    </div>
+
+
+    <!-- Div Editor codigo de tres direcciones -->
+    <div id="editor3D" style="width: 1330px;">
+
+    </div>
+
+    
+     <!-- Div Pestañas de Resultados(ConsolaC3D,Stack,Heap,Temporales -->
+    <div id="consola3D" style="position: absolute; top:63%; left:2%; width: 1330px; height:40%;">
+        <ul>
+            
+        </ul>
+    </div>
+    
+    <canvas id="Canvas">
+.
+    </canvas>
+    
+    <!-- SCRIPTS necesarios para el correcto funcionamiento de operaciones en el entorno web -->
+    <script src="http://127.0.0.1:3000/ace" type="text/javascript" charset="utf-8"></script>
+    <script src="http://127.0.0.1:3000/ajax"></script>
+    <script src="http://127.0.0.1:3000/jquery"></script>
+    <script src="http://127.0.0.1:3000/fileSaver.js"></script>   
+
+    
+    <script type="text/javascript">       
+        //Eventos abrir archivo
+        $("#aImport").click(function (e) {
+            e.preventDefault();
+            $("#importFile").trigger('click');//Activamos el trigger q llamara a la funcion establecida en onchange de la etiqueta ancala <a>
+        });        
+        $("#importFile").css('opacity', '0');//Definimos un estilo al filechooser        
+        
+        //Evento guardar archivo
+        $("#aSave").click(function (e) {
+            var fileName = prompt("Ingrese nombre del archivo", "miarchivo.j");
+            if (fileName == undefined) {
+                return;
+            }
+
+            var selectedTab = $("#tabs").tabs('option', 'active');
+            var tabUniqueId = $(this).parent().attr('data-tab-id');
+            var resultArray = $.grep(editors, function (n, i) {
+                return n.id === tabUniqueId;
+            }, true);
+
+            var editor = resultArray[selectedTab].instance;
+            var text = editor.getValue();
+            var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+            
+            saveAs(blob, fileName);//funcion del modulo fileSaver.js
+        });        
+                
+        //Evento mostrar Editor HLC
+        $("#aVistaEditor").click(function (e) {
+            document.getElementById('tabs').style.display = "block";
+            document.getElementById('tabs2').style.display = "block";
+            
+            document.getElementById('editor3D').style.display = "none";
+            document.getElementById('consola3D').style.display = "none";
+             document.getElementById('Canvas').style.display = "none";
+        });      
+                               
+        //Evento Compilar
+        $("#aCompile").click(function (e) {
+            
+            limpiador();
+            
+            mandarNombreTabArchivoActivo();
+            compilar();
+            getTS(); //muestra la tabla de simbolos
+            getTablaErrores(); //muestra la tabla de errores
+            getConsola(); //muestra la cadena en la consola
+            getCodigo3D(); //se muestra el codigo generado en la vista3D
+            
+            
+            
+        });
+                
+        
+        //Evento mostrar Editor 3AC
+        $("#aVista3D").click(function (e) {
+            document.getElementById('tabs').style.display = "none";
+            document.getElementById('tabs2').style.display = "none";
+            document.getElementById('Canvas').style.display = "none";
+                      
+            document.getElementById('editor3D').style.display = "block";
+            document.getElementById('consola3D').style.display = "block";          
+        });
+   
+        //Evento Optmizar C3D
+        $("#aOpitmizarC3D").click(function(e){
+            /*
+            ejecutarC3D(); //obtiene el texto y lo envia a ejecutar.
+            getStack(); //obtiene la cadena y la setea en el textStack
+            getHeap(); //obtiene la cadena y la setea en el textHeap
+            getTemporales(); //obtiene la cadena de los temporales y sus valores.
+            getConsola3D(); //obtiene la cadena de imprimir en la consola 3D
+            */
+        });
+
+        
+        $("#aReportAST").click(function (e) {
+            document.getElementById('tabs').style.display = "none";
+            document.getElementById('tabs2').style.display = "none";
+            document.getElementById('editor3D').style.display = "none";
+            document.getElementById('consola3D').style.display = "none";
+            document.getElementById('Canvas').style.display = "block";
+            
+			//getAST(); //mostrar la imagen de esta compilada
+            var img = new Image();
+    	    img.src = 'http://127.0.0.1:3000/image0.png';
+     
+            var canvas = document.getElementById('Canvas');
+    		var ctx = canvas.getContext('2d');
+    		canvas.width = img.width;
+    		canvas.height = img.height;     
+    		ctx.drawImage(img, 0, 0);  // DRAW THE IMAGE TO THE CANVAS.
+        });
+        
+    
+        
+       /***********************************************************************************
+       ***************** PARTE DE DECLARACIONES DE VARIABLES Y FUNCIONES  *****************
+       ***********************************************************************************/
+        var editors = [];   //Arreglo que contiene las pestañas (editores)
+        var contTabs = 0;   //Lleva el conteo de las pestañas abiertas
+        var editor3d;
+        var Range = ace.require('ace/range').Range;//Numeracion de lineas del editor
+        var init = false;
+        
+        
+        //Metodo main del documento, que carga la pagina por defecto
+        $(document).ready(function () {
+            // Inicializando pestañas
+            $('#tabs').tabs();
+            $('#tabs2').tabs();
+            $('#consola3D').tabs();
+
+            // Lógica del botón de creación de pestañas
+            $('#aCreate').on('click', function () {
+                contTabs++;
+                addEditor("", "Tab" + contTabs);//addEditor("", "Tab " + contTabs);
+            });
+
+            // Logica del botón de cerrar pestañas
+            $('#tabs').on('click', '.close', function () {
+                var tabUniqueId = $(this).parent().attr('data-tab-id');
+                var resultArray = $.grep(editors, function (n, i) {
+                    return n.id === tabUniqueId;
+                }, true);
+
+                var editor = resultArray[0].instance;//Se obtiene solo un array xq solo se cierra uno
+                editor.destroy();
+                $('#tabs').find('#panel_nav_' + tabUniqueId).remove();
+                $('#tabs').find('#panel_' + tabUniqueId).remove();
+
+            });
+
+            
+            //Programamos un tab activo al inicio de la aplicacion
+            contTabs = contTabs + 1;
+            addEditor("", "Tab"+ contTabs);//addEditor("", "Tab" + contTabs);//Llamamos funcion para crear editor
+            
+            crearMenu("<textarea id=\"txtConsola\" style=\"width:100%; height:100%;\"></textarea>", "Consola","#tabs2");
+            crearMenu("<div id=\"divErrores\" style=\"width:100%; height:100%; overflow-y:scroll;\"></div>", "Errores","#tabs2");
+            crearMenu("<div id=\"divTablaSimbolos\" style=\"width:100%; height:100%; overflow-y:scroll;\"></div>", "Tabla de Simbolos","#tabs2"); 
+            
+            crearMenu("<textarea id=\"txtConsolaC3D\" style=\"width:95%; height:95%;\"></textarea>", "Consola","#consola3D");
+            crearMenu("<textarea id=\"txtStack\" readonly style=\"width:95%; height:95%;\"></textarea>", "Stack","#consola3D");
+            crearMenu("<textarea id=\"txtHeap\" readonly style=\"width:95%; height:95%;\"></textarea>", "Heap","#consola3D");
+            crearMenu("<textarea id=\"txtTemporales\" readonly style=\"width:95%; height:95%;\"></textarea>", "Temporales","#consola3D");
+
+            
+            //Activamos tabs
+            var te = $('#tabs2');
+            te.tabs('option', 'active', 0);            
+            var te2 = $('#consola3D');
+            te2.tabs('option', 'active', 0);   
+            
+            $("#aVistaEditor").trigger('click');//Mostramos el editor HLC al iniciar la aplicacion
+            
+            crearEditorCodigo3D();//Tambien creamos de una vez el editor de C3D
+        });
+
+                
+        //Funcion para abrir archivo y mostrar su contenido en un nuevo editor.
+        function showFile() {
+            var preview = document.getElementById('show-text');
+            var file = document.querySelector('input[type=file]').files[0];
+            var reader = new FileReader();
+            reader.onload = function (event) {
+                contTabs++;//Aumentamos contador de tab xq crearemos uno con el contenido del archivo
+                addEditor(event.target.result, file.name);//Llamamos funcion q agrega editor en la pestaña con el nombre q recibe de parametro
+            }
+            reader.readAsText(file, "new file");//Leemos el contenido del archivo
+        }
+
+        
+        //Funcion para agregarr nuevo editor HLC 
+        function addEditor(text, tabName) {
+            var tabsElement = $('#tabs');
+            var tabsUlElement = tabsElement.find('ul');
+            var tabUniqueId = new Date().getTime() + Math.floor(Math.random() * 10000);
+            
+            //Creacion del Panel_Nav
+            var newTabNavElement = $('<li id="panel_nav_' + tabUniqueId + '" data-tabname="'+tabName+'" ><a href="#panel_' + tabUniqueId + '">' + tabName + '</a></li>');
+            tabsUlElement.append(newTabNavElement);//Agregamos el nuevo tab_nav a la lista uL
+
+            // Creación de panel que contendrá el editor
+            var newTabPanelElement = $('<div id="panel_' + tabUniqueId + '" data-tab-id="' + tabUniqueId + '"></div>');
+            tabsElement.append(newTabPanelElement);//Agregamos el panela los elementos de tabs
+            tabsElement.tabs('refresh');
+
+            //Se da 'focus' a la nueva pestaña creada
+            var tabIndex = $('#tabs ul li').index($('#panel_nav_' + tabUniqueId));
+            tabsElement.tabs('option', 'active', tabIndex);
+
+            //Creación de nuevo editor
+            var newEditorElement = $('<div id="editor_' + tabUniqueId + '"> </div>');
+            newTabPanelElement.append(newEditorElement);//lo agregamos al panel q lo contendra
+
+            //Inicialización del nuevo editor en la pestaña
+            var editor = ace.edit('editor_' + tabUniqueId);
+            editor.setTheme("ace/theme/eclipse");
+            editor.getSession().setMode("ace/mode/java");
+
+            //Se establece el tamaño del panel
+            newTabPanelElement.width('1330');
+            newTabPanelElement.height('300');
+
+            //Se establece el tamaño del editor
+            newEditorElement.width('1230');
+            newEditorElement.height('300');
+
+            //Se agrega el texto al editor (si fue enviado como parámetro)
+            editor.setValue(text);
+
+            newTabPanelElement.resize();
+            editor.resize();
+            
+            editors.push({ id: tabUniqueId, instance: editor });//Agregamos el editor a la lista de editores
+
+            //Se agrega el botón de cerrado de pestaña/editor
+            var closeButton = $('<button class="close">Close</button>');
+            newTabPanelElement.prepend(closeButton);
+        }
+
+        
+        //Funcion que crea editor C3D
+        function crearEditorCodigo3D() {  
+            
+            editor3d = ace.edit("editor3D");//editor3D
+            editor3d.setTheme("ace/theme/monokai");
+            editor3d.getSession().setMode("ace/mode/java"); 
+            editor3d.setValue("");
+            editor3d.resize();
+
+        }
+
+                
+        //Método para la creación de las pestañas de Consola y Errores
+        function crearMenu(text, tabName,tabContainer) {
+            var tabsElement = $(tabContainer);
+            var tabsUlElement = tabsElement.find('ul');
+            var tabUniqueId = new Date().getTime() + Math.floor(Math.random() * 10000);
+            
+            var newTabNavElement = $('<li id="panel_nav_' + tabUniqueId + '"><a href="#panel_' + tabUniqueId + '">' + tabName + '</a></li>');
+            tabsUlElement.append(newTabNavElement);
+            
+            var newTabPanelElement = $('<div id="panel_' + tabUniqueId + '" data-tab-id2="' + tabUniqueId + '"></div>');
+            tabsElement.append(newTabPanelElement);
+            tabsElement.tabs('refresh');
+            
+            var tabIndex = $('#tabs2 ul li').index($('#panel_nav_' + tabUniqueId));
+            tabsElement.tabs('option', 'active', tabIndex);
+
+            var newEditorElement = $('<div id="editor_' + tabUniqueId + '">' + text + '</div>');
+            newTabPanelElement.append(newEditorElement);
+
+            newTabPanelElement.width('1330');
+            newTabPanelElement.height('200');
+
+            newEditorElement.width('1300');//1230
+            newEditorElement.height('200');//150
+        }
+
+                
+        
+        
+        //Funcion que Compila el código de alto nivel.
+        function compilar() {
+            var selectedTab = $("#tabs").tabs('option', 'active');
+            var tabUniqueId = $(this).parent().attr('data-tab-id');
+            var resultArray = $.grep(editors, function (n, i) {
+                return n.id === tabUniqueId;
+            }, true);
+
+            var editor = resultArray[selectedTab].instance;
+            var formData = editor.getValue();
+            var xhr = new XMLHttpRequest();
+            xhr.open('PUT', 'http://localhost:3000/parse', true);
+            xhr.onload = function (e) { console.log('Vamos a mandar el HLC al handler') };
+            xhr.send(formData);
+        }
+
+        
+        //Funcion que obtiene cadena a imprimir en div consola HLC
+        function getConsola() {
+            var tabla;
+
+            var getCconsola = $.ajax({
+                url: 'http://127.0.0.1:3000/getConsola',
+                type: 'GET',
+                contentType: "application/json;charset=utf-8",
+                success: function (data, textStatus, xhr) {
+                    tabla = data;
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    alert('Error al obtener datos para consola... ');
+                }
+            });
+
+            getCconsola.done(function () {
+                document.getElementById("txtConsola").value = tabla;
+            });
+            
+        }
+        
+        
+        //Funcion que obtiene Tabla de errores lo muestra en div Errores.
+        function getTablaErrores() {
+            var tabla;
+
+            var getTerrores = $.ajax({
+                url: 'http://127.0.0.1:3000/getTablaErrores',
+                type: 'GET',
+                contentType: "application/json;charset=utf-8",
+                success: function (data, textStatus, xhr) {
+                    tabla = data;
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    alert('Error al obtener errores... ');
+                }
+            });
+
+            getTerrores.done(function () {
+                document.getElementById("divErrores").innerHTML = tabla;
+            });
+        }
+        
+                
+        //Funcion que Obtiene Tabla de Simbolos y muestra en div de Tabla simbolos
+        function getTS(){
+            var tabla;
+
+            var getTS = $.ajax({
+                url: 'http://127.0.0.1:3000/getTS',
+                type: 'GET',
+                contentType: "application/json;charset=utf-8",
+                success: function (data, textStatus, xhr) {
+                    tabla = data;
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    alert('Error al obtener la tabla de símbolos... ');
+                }
+            });
+
+            getTS.done(function () {
+                document.getElementById("divTablaSimbolos").innerHTML = tabla;
+            });
+        }
+        
+
+        //obtiene la cadena 3D en el editor
+        function getCodigo3D() {
+            var tabla;
+            var getC3D= $.ajax({
+                url: 'http://127.0.0.1:3000/getCodigo3D',
+                type: 'GET',
+                contentType: "application/json;charset=utf-8",
+                success: function (data, textStatus, xhr) {
+                    tabla = data;
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    alert('Error al obtener datos en codigo 3D... ');
+                }
+            });
+
+            getC3D.done(function () {
+                console.log(tabla);
+                lineaActual = undefined;
+                editor3d.setValue(tabla);
+            });
+        }
+
+        
+        //obtiene la cadena a imprimir en consola 3D
+        function getConsola3D() {
+            var tabla;
+
+            var getCconsola = $.ajax({
+                url: 'http://127.0.0.1:3000/getConsola3D',
+                type: 'GET',
+                contentType: "application/json;charset=utf-8",
+                success: function (data, textStatus, xhr) {
+                    tabla = data;
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    alert('Error al obtener datos en consola 3D... ');
+                }
+            });
+
+            getCconsola.done(function () {
+                document.getElementById("txtConsolaDebug").value = tabla;
+            });
+        }
+        
+        
+        //Funcion que utilizamos para limpiar todas las cosas necesarias para una corrida nueva
+        function limpiador() {
+            document.getElementById("txtConsola").value = "... . . .";
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open('PUT', 'http://localhost:3000/limpiador', true);
+            xhr.onload = function (e) { console.log('Vamos a limpiar') };
+            xhr.send("");
+        }
+        
+        //FUNCION QUE UTILIZAMOS PARA MANDAR EL NOMBRE DE LA PESTAÑA ACTUAL DEL EDITOR HLC QUE SE ESTA COMPILANDO, ESTE PUEDE SER EL NOMBRE DE UN ARCHIVO
+        function mandarNombreTabArchivoActivo() {                      
+            var active = $("#tabs").tabs("option", "active");            
+            //alert($("#tabs ul>li").eq(active).attr('data-tabname'));
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open('PUT', 'http://localhost:3000/nombreTabCompilando', true);
+            xhr.onload = function (e) { console.log('Vamos a mandar el nombre del tab q se esta compilando') };
+            xhr.send($("#tabs ul>li").eq(active).attr('data-tabname'));
+        }
+
+    </script>
+    
+</body>
+
+</html>

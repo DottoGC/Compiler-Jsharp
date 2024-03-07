@@ -1,0 +1,10 @@
+digraph{
+root->Nodo_Metodo_principal->principal;
+root [shape = cylinder, color = black];
+principal [shape = cylinder, color = red, style = filled];
+Nodo_Metodo_principal [shape = tripleoctagon, color = green];
+root->Nodo_Metodo_funcion->funcion;
+root [shape = cylinder, color = black];
+funcion [shape = cylinder, color = red, style = filled];
+Nodo_Metodo_funcion [shape = tripleoctagon, color = green];
+}

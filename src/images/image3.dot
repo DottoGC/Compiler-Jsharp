@@ -1,0 +1,18 @@
+digraph{
+root->Nodo_Metodo_principal->principal;
+root [shape = cylinder, color = black];
+principal [shape = cylinder, color = red, style = filled];
+Nodo_Metodo_principal [shape = tripleoctagon, color = green];
+root->Nodo_Metodo_funcion->funcion;
+root [shape = cylinder, color = black];
+funcion [shape = cylinder, color = red, style = filled];
+Nodo_Metodo_funcion [shape = tripleoctagon, color = green];
+root->Nodo_Metodo_funcion2->funcion2;
+root [shape = cylinder, color = black];
+funcion2 [shape = cylinder, color = red, style = filled];
+Nodo_Metodo_funcion2 [shape = tripleoctagon, color = green];
+root->Nodo_Metodo_sumar->sumar;
+root [shape = cylinder, color = black];
+sumar [shape = cylinder, color = red, style = filled];
+Nodo_Metodo_sumar [shape = tripleoctagon, color = green];
+}
